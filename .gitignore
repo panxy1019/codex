@@ -7,4 +7,6 @@ __pycache__/
 codex-history-build.*/
 codex-history-verify.*/
 codex-history-restore.*/
-
+.staging/
+*.restore-journal.json
+codex-history-release.*/
