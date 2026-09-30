@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -62,3 +63,48 @@ def write_attachment(codex_home: Path, relative_path: str, content: str = "attac
     path.write_text(content, encoding="utf-8")
     return path
 
+
+def relative_regular_files(root: Path) -> tuple[str, ...]:
+    return tuple(
+        sorted(
+            path.relative_to(root).as_posix()
+            for path in root.rglob("*")
+            if path.is_file() and not path.is_symlink()
+        )
+    )
+
+
+def verify_sha256sums(checksums_path: Path, root: Path) -> list[str]:
+    errors: list[str] = []
+    lines = checksums_path.read_text(encoding="utf-8").splitlines()
+    if lines != sorted(lines, key=lambda line: line.split("  ", 1)[1]):
+        errors.append("checksum lines are not path-sorted")
+    for line in lines:
+        try:
+            expected, relative = line.split("  ", 1)
+        except ValueError:
+            errors.append(f"invalid checksum line: {line}")
+            continue
+        path = root / relative
+        if not path.is_file():
+            errors.append(f"missing file: {relative}")
+            continue
+        actual = hashlib.sha256(path.read_bytes()).hexdigest()
+        if actual != expected:
+            errors.append(f"digest mismatch: {relative}")
+    return errors
+
+
+def tree_metadata(root: Path) -> tuple[tuple[str, int, int, int], ...]:
+    return tuple(
+        sorted(
+            (
+                path.relative_to(root).as_posix(),
+                path.lstat().st_ino,
+                path.lstat().st_size,
+                path.lstat().st_mtime_ns,
+            )
+            for path in root.rglob("*")
+            if path.is_file() and not path.is_symlink()
+        )
+    )
