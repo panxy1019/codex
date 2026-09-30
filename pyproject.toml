@@ -1,0 +1,9 @@
+[project]
+name = "codex-history-backup"
+version = "0.1.0"
+description = "Verified export and restore tools for local Codex conversation history"
+requires-python = ">=3.11"
+
+[tool.unittest]
+start-directory = "tests"
+

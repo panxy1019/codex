@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.venv/
+.worktrees/
+*.tar.zst
+*.tar.zst.part*
+codex-history-build.*/
+codex-history-verify.*/
+codex-history-restore.*/
+
