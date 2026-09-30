@@ -234,15 +234,29 @@ def read_rollout_info(path: Path, codex_home: Path) -> RolloutInfo:
 def select_rollouts(
     codex_home: Path,
     excluded_thread_ids: frozenset[str],
+    included_thread_ids: frozenset[str] | None = None,
 ) -> RolloutSelection:
+    if included_thread_ids is not None and excluded_thread_ids:
+        raise ValueError("include and exclude thread filters are mutually exclusive")
     excluded_ids = {
         _canonical_uuid(thread_id, "excluded thread id") for thread_id in excluded_thread_ids
     }
+    included_ids = (
+        {
+            _canonical_uuid(thread_id, "included thread id")
+            for thread_id in included_thread_ids
+        }
+        if included_thread_ids is not None
+        else None
+    )
     included: list[RolloutInfo] = []
     excluded: list[RolloutInfo] = []
     for path in discover_rollouts(codex_home):
         info = read_rollout_info(path, codex_home)
-        if info.thread_id in excluded_ids or info.session_id in excluded_ids:
+        if included_ids is not None:
+            if info.thread_id in included_ids or info.session_id in included_ids:
+                included.append(info)
+        elif info.thread_id in excluded_ids or info.session_id in excluded_ids:
             excluded.append(info)
         else:
             included.append(info)
@@ -253,7 +267,13 @@ def select_rollouts(
     excluded_references = {
         reference for info in excluded for reference in info.attachment_paths
     }
-    selected_attachments = tuple(sorted(included_references - excluded_references))
+    selected_attachments = tuple(
+        sorted(
+            included_references
+            if included_ids is not None
+            else included_references - excluded_references
+        )
+    )
 
     paths_by_thread: defaultdict[str, list[str]] = defaultdict(list)
     for info in included:

@@ -29,11 +29,19 @@ python3 -m compileall -q codex_history scripts tests
 
 以下内容不在允许列表中，也不会作为备份内容复制：`auth.json`、`config.toml`、SQLite 状态库、日志、缓存、插件及未被已选会话引用的附件。附件路径采用隐私优先规则：只要某个附件同时被排除会话引用，它就不会进入备份，即使另一个已选会话也引用了它。
 
-`--exclude-thread` 可重复使用。当前 rollout 身份取 `session_meta.payload.id`（旧格式缺失时使用 `payload.session_id`），并与文件名 UUID 交叉验证；`payload.session_id` 还可能表示其父/根会话。排除规则同时匹配 rollout 自身 ID 和父/根会话 ID，因此当前会话派生的子代理记录也会一并排除。当前这次迁移必须使用：
+`--exclude-thread` 和 `--include-thread` 都可重复使用，但两种模式互斥。当前 rollout 身份取 `session_meta.payload.id`（旧格式缺失时使用 `payload.session_id`），并与文件名 UUID 交叉验证；`payload.session_id` 还可能表示其父/根会话。过滤规则同时匹配 rollout 自身 ID 和父/根会话 ID，因此当前会话派生的子代理记录也会一并选中或排除。首次历史迁移使用了：
 
 ```text
 --exclude-thread 01a0e7c5-0d85-7c82-b4ee-f50f37e86a0b
 ```
+
+只制作一个会话族的增量备份时使用：
+
+```text
+--include-thread 01a0e7c5-0d85-7c82-b4ee-f50f37e86a0b
+```
+
+增量模式只打包目标会话、其关联子 rollout 和这些记录引用的附件，不重复包含无关历史。
 
 如果第一条身份 metadata 无法解析、文件名与内部会话 ID 不一致、源文件在复制时变化，或引用附件丢失，导出会失败关闭。身份已经确定后的历史截断 JSON 行会按原始字节保留，并从该行保守提取位于附件根目录下的明文绝对路径；工具不会为了“修复”旧记录而重写 rollout。
 
@@ -50,6 +58,16 @@ python3 scripts/export_codex_history.py \
   --output-dir "$backup_dir" \
   --backup-id "$backup_id" \
   --exclude-thread 01a0e7c5-0d85-7c82-b4ee-f50f37e86a0b
+```
+
+或者仅导出一个会话族：
+
+```bash
+python3 scripts/export_codex_history.py \
+  --codex-home "$HOME/.codex" \
+  --output-dir "$backup_dir" \
+  --backup-id "$backup_id" \
+  --include-thread 01a0e7c5-0d85-7c82-b4ee-f50f37e86a0b
 ```
 
 生成的 Release 资产名称为：

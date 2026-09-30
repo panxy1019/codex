@@ -65,6 +65,59 @@ class RolloutTests(unittest.TestCase):
             (PurePosixPath("attachments/included/pasted-text.txt"),),
         )
 
+    def test_include_filter_selects_thread_family_and_its_referenced_attachments_only(self) -> None:
+        family_attachment = write_attachment(self.home, "family/note.txt")
+        unrelated_attachment = write_attachment(self.home, "unrelated/note.txt")
+        write_rollout(
+            self.home,
+            bucket="sessions",
+            relative_parent="2026/09/30",
+            filename_thread_id=INCLUDED_ID,
+            metadata_thread_id=INCLUDED_ID,
+            attachment_paths=(family_attachment,),
+        )
+        write_rollout(
+            self.home,
+            bucket="sessions",
+            relative_parent="2026/09/30",
+            filename_thread_id=SECOND_ID,
+            metadata_thread_id=INCLUDED_ID,
+            legacy_thread_id=SECOND_ID,
+            attachment_paths=(family_attachment,),
+        )
+        write_rollout(
+            self.home,
+            bucket="sessions",
+            relative_parent="2026/09/29",
+            filename_thread_id=EXCLUDED_ID,
+            metadata_thread_id=EXCLUDED_ID,
+            attachment_paths=(unrelated_attachment, family_attachment),
+        )
+
+        selection = select_rollouts(
+            self.home,
+            frozenset(),
+            included_thread_ids=frozenset({INCLUDED_ID}),
+        )
+
+        self.assertEqual(
+            {item.thread_id for item in selection.included},
+            {INCLUDED_ID, SECOND_ID},
+        )
+        self.assertEqual(selection.excluded, ())
+        self.assertEqual(
+            selection.selected_attachments,
+            (PurePosixPath("attachments/family/note.txt"),),
+        )
+
+    def test_include_and_exclude_filters_are_mutually_exclusive(self) -> None:
+        with self.assertRaisesRegex(ValueError, "mutually exclusive"):
+            select_rollouts(
+                self.home,
+                frozenset({EXCLUDED_ID}),
+                included_thread_ids=frozenset({INCLUDED_ID}),
+            )
+
     def test_filename_and_session_meta_uuid_mismatch_fails_closed(self) -> None:
         path = write_rollout(
             self.home,

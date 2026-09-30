@@ -98,7 +98,9 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--codex-home", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
-    parser.add_argument("--exclude-thread", required=True, action="append")
+    filters = parser.add_mutually_exclusive_group(required=True)
+    filters.add_argument("--exclude-thread", action="append")
+    filters.add_argument("--include-thread", action="append")
     parser.add_argument("--backup-id", default=None)
     parser.add_argument("--codex-version", default=None)
     parser.add_argument("--compression-level", default=1, type=int)
@@ -115,7 +117,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             codex_home=args.codex_home,
             staging_parent=output_dir / ".staging",
             backup_id=backup_id,
-            excluded_thread_ids=frozenset(args.exclude_thread),
+            excluded_thread_ids=frozenset(args.exclude_thread or ()),
+            included_thread_ids=(
+                frozenset(args.include_thread) if args.include_thread is not None else None
+            ),
             codex_version=codex_version,
             source_platform=platform.system().lower(),
             compression_level=args.compression_level,
@@ -137,6 +142,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "excluded_rollouts": sum(
                 item["matched_rollouts"] for item in manifest["exclusions"]
             ),
+            "included_thread_filter": sorted(args.include_thread or ()),
         }
         print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
         return 0

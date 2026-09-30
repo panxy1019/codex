@@ -145,6 +145,51 @@ class ExportTests(unittest.TestCase):
             },
         )
 
+    def test_cli_include_thread_exports_only_requested_family(self) -> None:
+        exit_code = main(
+            [
+                "--codex-home",
+                str(self.home),
+                "--output-dir",
+                str(self.output),
+                "--include-thread",
+                INCLUDED_ID,
+                "--backup-id",
+                BACKUP_ID,
+                "--codex-version",
+                "0.147.0",
+            ]
+        )
+
+        self.assertEqual(exit_code, 0)
+        manifest = json.loads(
+            (self.output / f"codex-history-{BACKUP_ID}.manifest.json").read_text()
+        )
+        self.assertEqual(
+            {record["thread_id"] for record in manifest["rollouts"]},
+            {INCLUDED_ID},
+        )
+        self.assertEqual(manifest["exclusions"], [])
+
+    def test_cli_include_and_exclude_options_are_mutually_exclusive(self) -> None:
+        with self.assertRaises(SystemExit):
+            main(
+                [
+                    "--codex-home",
+                    str(self.home),
+                    "--output-dir",
+                    str(self.output),
+                    "--include-thread",
+                    INCLUDED_ID,
+                    "--exclude-thread",
+                    EXCLUDED_ID,
+                    "--backup-id",
+                    BACKUP_ID,
+                    "--codex-version",
+                    "0.147.0",
+                ]
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

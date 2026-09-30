@@ -25,6 +25,7 @@ class SnapshotConfig:
     excluded_thread_ids: frozenset[str]
     codex_version: str
     source_platform: str
+    included_thread_ids: frozenset[str] | None = None
     compression_level: int = 1
     split_threshold_bytes: int = 1_932_735_283
 
@@ -76,7 +77,11 @@ def build_snapshot(config: SnapshotConfig) -> SnapshotResult:
     _write_exclusive(incomplete_marker, b"snapshot construction incomplete\n")
 
     try:
-        selection = select_rollouts(codex_home, config.excluded_thread_ids)
+        selection = select_rollouts(
+            codex_home,
+            config.excluded_thread_ids,
+            included_thread_ids=config.included_thread_ids,
+        )
         file_records: list[FileRecord] = []
         rollout_records: list[RolloutRecord] = []
 
