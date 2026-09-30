@@ -2,6 +2,10 @@ from __future__ import annotations
 
 import json
 import hashlib
+import subprocess
+import tarfile
+import tempfile
+import io
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -108,3 +112,28 @@ def tree_metadata(root: Path) -> tuple[tuple[str, int, int, int], ...]:
             if path.is_file() and not path.is_symlink()
         )
     )
+
+
+def make_tar_zst(
+    destination: Path,
+    entries: Iterable[tuple[tarfile.TarInfo, bytes | None]],
+) -> Path:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(suffix=".tar", delete=False) as temporary:
+        tar_path = Path(temporary.name)
+    try:
+        with tarfile.open(tar_path, "w") as archive:
+            for info, data in entries:
+                payload = data or b""
+                if info.isreg():
+                    info.size = len(payload)
+                    archive.addfile(info, io.BytesIO(payload))
+                else:
+                    archive.addfile(info)
+        subprocess.run(
+            ["zstd", "-q", "-f", str(tar_path), "-o", str(destination)],
+            check=True,
+        )
+        return destination
+    finally:
+        tar_path.unlink(missing_ok=True)
