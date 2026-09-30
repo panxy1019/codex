@@ -172,11 +172,11 @@ def plan_restore(snapshot_root: Path, target_codex_home: Path) -> RestorePlan:
             raise IntegrityError("restore rollout record is incomplete")
         backup_rollouts.setdefault(thread_id, set()).add(digest)
 
-    semantic_conflicts = set(str(thread_id) for thread_id in duplicate_groups)
+    semantic_conflicts: set[str] = set()
     target_rollouts = _target_rollout_digests(target)
     for thread_id, backup_digests in backup_rollouts.items():
         existing = target_rollouts.get(thread_id)
-        if existing is not None and existing != backup_digests:
+        if existing is not None and not existing.issubset(backup_digests):
             semantic_conflicts.add(thread_id)
 
     return RestorePlan(

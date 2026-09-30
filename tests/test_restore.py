@@ -96,12 +96,16 @@ class RestoreTests(unittest.TestCase):
         self.assertIn(THREAD_A, plan.semantic_conflicts)
         self.assertTrue(plan.has_conflicts)
 
-    def test_duplicate_thread_ids_inside_backup_block_restore(self) -> None:
+    def test_duplicate_thread_ids_inside_verified_backup_are_restored_when_target_is_empty(self) -> None:
         plan = plan_restore(self._snapshot(duplicate=True), self.target_home)
 
-        self.assertIn(THREAD_A, plan.semantic_conflicts)
-        with self.assertRaises(RestoreConflictError):
-            apply_restore(plan, self.base / "restore-journal.json")
+        self.assertNotIn(THREAD_A, plan.semantic_conflicts)
+        apply_restore(plan, self.base / "restore-journal.json")
+        restored_rollouts = [
+            action for action in plan.actions if action.relative_path.endswith(".jsonl")
+        ]
+        self.assertEqual(len(restored_rollouts), 2)
+        self.assertTrue(all(action.destination.is_file() for action in restored_rollouts))
 
     def test_missing_or_symlink_target_home_is_rejected(self) -> None:
         root = self._snapshot()
