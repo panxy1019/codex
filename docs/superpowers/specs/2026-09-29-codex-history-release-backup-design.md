@@ -89,6 +89,8 @@ skills/
 
 导出器必须在复制任何字节前解析每个 rollout 的会话 ID。`session_meta.payload.id` 是 rollout 自身 ID，并与规范文件名交叉验证；旧格式缺少 `id` 时使用 `payload.session_id`。较新子代理记录中的 `session_id` 可合法指向不同的父/根会话 ID。
 
+身份由第一条有效 `session_meta` 锁定；后续拼入的父会话 metadata 不改变该文件身份。第一条身份 metadata 之前的损坏 JSON 仍然失败关闭。身份之后的历史遗留截断行按原始字节保留，并以保守文本扫描补充附件路径，不重写源 rollout。
+
 对排除 ID 的处理规则：
 
 1. 所有目录中自身 `id` 或父/根 `session_id` 匹配该 ID 的 rollout 都排除，不能只排除当前已知路径；这会同时排除活动会话派生的子代理记录。

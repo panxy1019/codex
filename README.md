@@ -35,7 +35,7 @@ python3 -m compileall -q codex_history scripts tests
 --exclude-thread 01a0e7c5-0d85-7c82-b4ee-f50f37e86a0b
 ```
 
-如果 rollout 无法解析、文件名与内部会话 ID 不一致、源文件在复制时变化，或引用附件丢失，导出会失败关闭，不会悄悄生成不完整备份。
+如果第一条身份 metadata 无法解析、文件名与内部会话 ID 不一致、源文件在复制时变化，或引用附件丢失，导出会失败关闭。身份已经确定后的历史截断 JSON 行会按原始字节保留，并从该行保守提取位于附件根目录下的明文绝对路径；工具不会为了“修复”旧记录而重写 rollout。
 
 ## 1. 导出
 

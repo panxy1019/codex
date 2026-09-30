@@ -135,6 +135,23 @@ def _attachment_reference(value: str, codex_home: Path) -> PurePosixPath | None:
     return PurePosixPath("attachments", *relative.parts)
 
 
+def _raw_attachment_references(value: str, codex_home: Path) -> set[PurePosixPath]:
+    prefix = str(Path(os.path.abspath(codex_home / "attachments"))) + "/"
+    references: set[PurePosixPath] = set()
+    start = 0
+    while True:
+        index = value.find(prefix, start)
+        if index < 0:
+            return references
+        end = index + len(prefix)
+        while end < len(value) and value[end] not in {'"', "\\", "\r", "\n", "\x00"}:
+            end += 1
+        reference = _attachment_reference(value[index:end], codex_home)
+        if reference is not None:
+            references.add(reference)
+        start = max(end, index + 1)
+
+
 def read_rollout_info(path: Path, codex_home: Path) -> RolloutInfo:
     home = Path(os.path.abspath(codex_home))
     candidate = Path(os.path.abspath(path))
@@ -166,6 +183,9 @@ def read_rollout_info(path: Path, codex_home: Path) -> RolloutInfo:
             try:
                 record = json.loads(raw_line)
             except json.JSONDecodeError as exc:
+                if metadata_thread_id is not None:
+                    attachments.update(_raw_attachment_references(raw_line, home))
+                    continue
                 raise RolloutFormatError(f"invalid JSON at line {line_number}") from exc
             if not isinstance(record, dict):
                 raise RolloutFormatError(f"JSONL record at line {line_number} is not an object")

@@ -96,6 +96,25 @@ class RolloutTests(unittest.TestCase):
         with self.assertRaisesRegex(RolloutFormatError, "session_meta"):
             read_rollout_info(absent, self.home)
 
+    def test_malformed_record_after_identity_is_preserved_and_scanned_for_attachments(self) -> None:
+        attachment = write_attachment(self.home, "legacy/referenced.txt")
+        path = write_rollout(
+            self.home,
+            bucket="archived_sessions",
+            relative_parent="",
+            filename_thread_id=INCLUDED_ID,
+            metadata_thread_id=INCLUDED_ID,
+        )
+        with path.open("a", encoding="utf-8") as stream:
+            stream.write('{"type":"event_msg","attachment":"' + str(attachment) + '"\n')
+
+        info = read_rollout_info(path, self.home)
+
+        self.assertEqual(
+            info.attachment_paths,
+            frozenset({PurePosixPath("attachments/legacy/referenced.txt")}),
+        )
+
     def test_id_is_rollout_identity_and_session_id_can_name_parent_for_exclusion(self) -> None:
         legacy = write_rollout(
             self.home,
