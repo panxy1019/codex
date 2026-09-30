@@ -14,7 +14,9 @@ from .models import ManifestError
 
 
 _UUID_TEXT = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
-_FILENAME_UUID_RE = re.compile(rf"(?P<thread_id>{_UUID_TEXT})\.jsonl$")
+_FILENAME_UUID_RE = re.compile(
+    rf"-(?P<thread_id>{_UUID_TEXT})(?:_{_UUID_TEXT})?\.jsonl$"
+)
 _ROLLOUT_BUCKETS = ("sessions", "archived_sessions")
 
 

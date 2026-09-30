@@ -156,6 +156,21 @@ class RolloutTests(unittest.TestCase):
         with self.assertRaisesRegex(RolloutFormatError, "thread id mismatch"):
             read_rollout_info(path, self.home)
 
+    def test_collision_suffix_uuid_does_not_replace_primary_filename_identity(self) -> None:
+        path = write_rollout(
+            self.home,
+            bucket="sessions",
+            relative_parent="2026/09/30",
+            filename_thread_id=INCLUDED_ID,
+            metadata_thread_id=INCLUDED_ID,
+        )
+        suffixed = path.with_name(path.stem + f"_{SECOND_ID}.jsonl")
+        path.rename(suffixed)
+
+        info = read_rollout_info(suffixed, self.home)
+
+        self.assertEqual(info.thread_id, INCLUDED_ID)
+
     def test_first_session_meta_defines_identity_when_parent_history_is_embedded(self) -> None:
         path = write_rollout(
             self.home,
