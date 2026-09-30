@@ -28,6 +28,7 @@ class RolloutInfo:
     relative_path: PurePosixPath
     source_bucket: str
     thread_id: str
+    session_id: str
     attachment_paths: frozenset[PurePosixPath]
 
 
@@ -155,6 +156,7 @@ def read_rollout_info(path: Path, codex_home: Path) -> RolloutInfo:
         else None
     )
     metadata_thread_id: str | None = None
+    metadata_session_id: str | None = None
     attachments: set[PurePosixPath] = set()
 
     with candidate.open("r", encoding="utf-8") as stream:
@@ -183,12 +185,17 @@ def read_rollout_info(path: Path, codex_home: Path) -> RolloutInfo:
                 canonical_legacy = (
                     _canonical_uuid(legacy_id, "payload.id") if legacy_id is not None else None
                 )
-                if canonical_session and canonical_legacy and canonical_session != canonical_legacy:
-                    raise RolloutFormatError("session_meta identity fields disagree")
-                found_id = canonical_session or canonical_legacy
+                found_id = canonical_legacy or canonical_session
+                found_session_id = canonical_session or found_id
                 if metadata_thread_id is not None and metadata_thread_id != found_id:
                     raise RolloutFormatError("multiple session_meta records disagree")
+                if (
+                    metadata_session_id is not None
+                    and metadata_session_id != found_session_id
+                ):
+                    raise RolloutFormatError("multiple session_meta session IDs disagree")
                 metadata_thread_id = found_id
+                metadata_session_id = found_session_id
             for text in _walk_strings(record):
                 reference = _attachment_reference(text, home)
                 if reference is not None:
@@ -204,6 +211,7 @@ def read_rollout_info(path: Path, codex_home: Path) -> RolloutInfo:
         relative_path=PurePosixPath(*relative.parts),
         source_bucket=relative.parts[0],
         thread_id=metadata_thread_id,
+        session_id=metadata_session_id or metadata_thread_id,
         attachment_paths=frozenset(attachments),
     )
 
@@ -219,7 +227,7 @@ def select_rollouts(
     excluded: list[RolloutInfo] = []
     for path in discover_rollouts(codex_home):
         info = read_rollout_info(path, codex_home)
-        if info.thread_id in excluded_ids:
+        if info.thread_id in excluded_ids or info.session_id in excluded_ids:
             excluded.append(info)
         else:
             included.append(info)

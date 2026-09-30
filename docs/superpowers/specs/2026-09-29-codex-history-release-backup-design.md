@@ -87,11 +87,11 @@ skills/
 
 ### 4.3 活动会话排除规则
 
-导出器必须在复制任何字节前解析每个 rollout 的会话 ID。会话 ID 优先从规范文件名取得，并用 rollout 元数据交叉验证；旧格式无法从文件名判断时，仅读取足以识别 ID 的元数据。
+导出器必须在复制任何字节前解析每个 rollout 的会话 ID。`session_meta.payload.id` 是 rollout 自身 ID，并与规范文件名交叉验证；旧格式缺少 `id` 时使用 `payload.session_id`。较新子代理记录中的 `session_id` 可合法指向不同的父/根会话 ID。
 
 对排除 ID 的处理规则：
 
-1. 所有目录中匹配该 ID 的 rollout 都排除，不能只排除当前已知路径。
+1. 所有目录中自身 `id` 或父/根 `session_id` 匹配该 ID 的 rollout 都排除，不能只排除当前已知路径；这会同时排除活动会话派生的子代理记录。
 2. 该 rollout 不进入 staging、tar、公开清单或 checksum 文件。
 3. 导出器不把全局附件索引原样复制。
 4. 附件仅从已纳入 rollout 的引用集合选择；只被排除会话引用的附件自然不会入选。

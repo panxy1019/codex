@@ -26,7 +26,7 @@
 ## Implementation Assumptions
 
 - 源机器是当前 Linux 环境；目标机器必须提供 Python 3.11+、tar、zstd 和一个显式目标 `CODEX_HOME`，不假设目标用户名或主目录相同。
-- rollout 身份以已观察到的 `session_meta.payload.session_id` 为主，并兼容同值的 legacy `payload.id`；任何未知或矛盾格式均停止导出。
+- rollout 自身身份以已观察到的 `session_meta.payload.id` 为主，旧格式缺失时使用 `payload.session_id`；`session_id` 可合法指向父/根会话，排除规则必须同时匹配两者；任何未知或与文件名矛盾的格式均停止导出。
 - v1 快照保存 rollout 原始字节，不重写其中的绝对路径；附件作为可校验补充数据恢复，Codex 对跨机器附件链接的 UI 行为属于烟雾验证范围。
 - 缺失或变化中的已引用附件会使本次导出失败，不会生成一个被描述为完整的部分快照。
 - 首次压缩资产预计低于 1.8 GiB；分卷仍实现并测试，以防执行时数据增长。
@@ -35,7 +35,7 @@
 ## Review Focus
 
 - 恶意归档成员（路径穿越、绝对路径、链接或特殊文件）必须在写出 staging 之前被拒绝；Task 5 固定该行为。
-- 文件名 UUID 与 `session_meta.payload.session_id`/`id` 不一致或 metadata 损坏时必须 fail-closed；Task 2 固定该行为。
+- 文件名 UUID 与 rollout 自身 `session_meta.payload.id`（旧格式为 `session_id`）不一致或 metadata 损坏时必须 fail-closed；Task 2 固定该行为。
 - 源文件在复制过程中替换、增长或改变 mtime 时必须删除副本并使整个导出失败；Task 3 固定该行为。
 - 恢复目标在 dry-run 后被并发创建，或已有同 UUID 异内容 rollout 时必须拒绝覆盖；Task 6 固定该行为。
 - GitHub draft Release 的远端资产与已提交 manifest/checksum 不一致或下载中断时不得转为正式 Release；Task 7 固定该行为。
@@ -151,7 +151,7 @@ def test_filename_and_session_meta_uuid_mismatch_fails_closed():
         read_rollout_info(mismatched_rollout, home)
 ```
 
-Also test malformed JSON before metadata, absent metadata, both `payload.session_id` and legacy `payload.id`, archived/source bucket preservation, sorted discovery, duplicate-ID grouping, and attachment strings outside `attachments/` being ignored.
+Also test malformed JSON before metadata, absent metadata, both `payload.id` and a distinct parent/root `payload.session_id`, archived/source bucket preservation, sorted discovery, duplicate-ID grouping, and attachment strings outside `attachments/` being ignored.
 
 Also reject symlinked rollout files or symlinked directories encountered below either rollout root before reading conversation content.
 
@@ -162,11 +162,11 @@ Expected: import failure for `codex_history.rollouts`.
 
 - [ ] **Step 3: Implement streaming rollout parsing**
 
-Read JSONL line-by-line. Require the first recognized `type == "session_meta"` record to contain a canonical UUID in `payload.session_id` or `payload.id`; if both exist they must agree. Cross-check any UUID suffix in `rollout-*.jsonl`. Recursively inspect string values for resolved children of `<codex_home>/attachments`, convert them to logical POSIX-relative paths, and never return source absolute paths.
+Read JSONL line-by-line. Require the first recognized `type == "session_meta"` record to contain a canonical UUID in `payload.id` or `payload.session_id`. When both exist, treat `id` as the rollout identity and `session_id` as its potentially distinct parent/root identity; cross-check the rollout identity against any UUID suffix in `rollout-*.jsonl`. Recursively inspect string values for resolved children of `<codex_home>/attachments`, convert them to logical POSIX-relative paths, and never return source absolute paths.
 
 - [ ] **Step 4: Implement deterministic selection**
 
-Recursively enumerate only regular `.jsonl` files beneath the two allowed rollout roots, sort by logical relative path, preserve duplicates, calculate `included_refs - excluded_refs`, and group included duplicate thread IDs without reading the global attachment index.
+Recursively enumerate only regular `.jsonl` files beneath the two allowed rollout roots, sort by logical relative path, preserve duplicates, exclude records when either their rollout ID or parent/root session ID is explicitly excluded, calculate `included_refs - excluded_refs`, and group included duplicate thread IDs without reading the global attachment index.
 
 - [ ] **Step 5: Run rollout tests**
 

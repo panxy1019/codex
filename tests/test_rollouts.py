@@ -96,7 +96,7 @@ class RolloutTests(unittest.TestCase):
         with self.assertRaisesRegex(RolloutFormatError, "session_meta"):
             read_rollout_info(absent, self.home)
 
-    def test_legacy_id_is_supported_and_both_identity_fields_must_agree(self) -> None:
+    def test_id_is_rollout_identity_and_session_id_can_name_parent_for_exclusion(self) -> None:
         legacy = write_rollout(
             self.home,
             bucket="archived_sessions",
@@ -105,7 +105,27 @@ class RolloutTests(unittest.TestCase):
             metadata_thread_id=None,
             legacy_thread_id=INCLUDED_ID,
         )
-        contradictory = write_rollout(
+        child = write_rollout(
+            self.home,
+            bucket="sessions",
+            relative_parent="2026/09/30",
+            filename_thread_id=SECOND_ID,
+            metadata_thread_id=EXCLUDED_ID,
+            legacy_thread_id=SECOND_ID,
+        )
+
+        info = read_rollout_info(legacy, self.home)
+        self.assertEqual(info.thread_id, INCLUDED_ID)
+        self.assertEqual(info.source_bucket, "archived_sessions")
+        self.assertTrue(str(info.relative_path).startswith("archived_sessions/"))
+        child_info = read_rollout_info(child, self.home)
+        self.assertEqual(child_info.thread_id, SECOND_ID)
+        self.assertEqual(child_info.session_id, EXCLUDED_ID)
+        selection = select_rollouts(self.home, frozenset({EXCLUDED_ID}))
+        self.assertEqual([item.thread_id for item in selection.excluded], [SECOND_ID])
+
+    def test_filename_must_match_id_when_id_and_session_id_differ(self) -> None:
+        path = write_rollout(
             self.home,
             bucket="sessions",
             relative_parent="2026/09/30",
@@ -114,12 +134,8 @@ class RolloutTests(unittest.TestCase):
             legacy_thread_id=MISMATCH_ID,
         )
 
-        info = read_rollout_info(legacy, self.home)
-        self.assertEqual(info.thread_id, INCLUDED_ID)
-        self.assertEqual(info.source_bucket, "archived_sessions")
-        self.assertTrue(str(info.relative_path).startswith("archived_sessions/"))
-        with self.assertRaisesRegex(RolloutFormatError, "identity fields disagree"):
-            read_rollout_info(contradictory, self.home)
+        with self.assertRaisesRegex(RolloutFormatError, "thread id mismatch"):
+            read_rollout_info(path, self.home)
 
     def test_discovery_is_recursive_sorted_and_groups_duplicate_included_ids(self) -> None:
         later = write_rollout(

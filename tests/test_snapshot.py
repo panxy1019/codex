@@ -130,6 +130,24 @@ class SnapshotTests(unittest.TestCase):
         self.assertEqual(result.manifest.counts.rollout_file_count, 2)
         self.assertEqual(len(result.manifest.duplicate_thread_ids[INCLUDED_ID]), 2)
 
+    def test_exclusion_count_includes_child_rollouts_linked_by_session_id(self) -> None:
+        self._build_source()
+        child_id = "01a09fc2-b66b-7742-b63a-93f58ba7d908"
+        write_rollout(
+            self.home,
+            bucket="sessions",
+            relative_parent="2026/09/29",
+            filename_thread_id=child_id,
+            metadata_thread_id=EXCLUDED_ID,
+            legacy_thread_id=child_id,
+            stamp="2026-09-29T02-02-03",
+        )
+
+        result = build_snapshot(self._config())
+
+        self.assertEqual(result.manifest.exclusions[0].matched_rollouts, 2)
+        self.assertNotIn(child_id, {record.thread_id for record in result.manifest.rollouts})
+
     def test_snapshot_fails_when_referenced_attachment_is_missing(self) -> None:
         missing = self.home / "attachments" / "missing" / "pasted-text.txt"
         write_rollout(

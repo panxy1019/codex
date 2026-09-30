@@ -133,7 +133,8 @@ def build_snapshot(config: SnapshotConfig) -> SnapshotResult:
                 thread_id=thread_id,
                 reason="explicitly-excluded-thread",
                 matched_rollouts=sum(
-                    info.thread_id == thread_id for info in selection.excluded
+                    info.thread_id == thread_id or info.session_id == thread_id
+                    for info in selection.excluded
                 ),
             )
             for thread_id in sorted(config.excluded_thread_ids)

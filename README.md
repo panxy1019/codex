@@ -29,7 +29,7 @@ python3 -m compileall -q codex_history scripts tests
 
 以下内容不在允许列表中，也不会作为备份内容复制：`auth.json`、`config.toml`、SQLite 状态库、日志、缓存、插件及未被已选会话引用的附件。附件路径采用隐私优先规则：只要某个附件同时被排除会话引用，它就不会进入备份，即使另一个已选会话也引用了它。
 
-`--exclude-thread` 可重复使用，并按会话 UUID 匹配该 ID 的所有 rollout 副本。当前这次迁移必须使用：
+`--exclude-thread` 可重复使用。当前 rollout 身份取 `session_meta.payload.id`（旧格式缺失时使用 `payload.session_id`），并与文件名 UUID 交叉验证；`payload.session_id` 还可能表示其父/根会话。排除规则同时匹配 rollout 自身 ID 和父/根会话 ID，因此当前会话派生的子代理记录也会一并排除。当前这次迁移必须使用：
 
 ```text
 --exclude-thread 01a0e7c5-0d85-7c82-b4ee-f50f37e86a0b
