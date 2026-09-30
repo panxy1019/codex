@@ -169,7 +169,7 @@ def read_rollout_info(path: Path, codex_home: Path) -> RolloutInfo:
                 raise RolloutFormatError(f"invalid JSON at line {line_number}") from exc
             if not isinstance(record, dict):
                 raise RolloutFormatError(f"JSONL record at line {line_number} is not an object")
-            if record.get("type") == "session_meta":
+            if record.get("type") == "session_meta" and metadata_thread_id is None:
                 payload = record.get("payload")
                 if not isinstance(payload, dict):
                     raise RolloutFormatError("session_meta payload is not an object")
@@ -187,13 +187,6 @@ def read_rollout_info(path: Path, codex_home: Path) -> RolloutInfo:
                 )
                 found_id = canonical_legacy or canonical_session
                 found_session_id = canonical_session or found_id
-                if metadata_thread_id is not None and metadata_thread_id != found_id:
-                    raise RolloutFormatError("multiple session_meta records disagree")
-                if (
-                    metadata_session_id is not None
-                    and metadata_session_id != found_session_id
-                ):
-                    raise RolloutFormatError("multiple session_meta session IDs disagree")
                 metadata_thread_id = found_id
                 metadata_session_id = found_session_id
             for text in _walk_strings(record):

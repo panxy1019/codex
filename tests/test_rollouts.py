@@ -137,6 +137,34 @@ class RolloutTests(unittest.TestCase):
         with self.assertRaisesRegex(RolloutFormatError, "thread id mismatch"):
             read_rollout_info(path, self.home)
 
+    def test_first_session_meta_defines_identity_when_parent_history_is_embedded(self) -> None:
+        path = write_rollout(
+            self.home,
+            bucket="archived_sessions",
+            relative_parent="",
+            filename_thread_id=SECOND_ID,
+            metadata_thread_id=INCLUDED_ID,
+            legacy_thread_id=SECOND_ID,
+        )
+        with path.open("a", encoding="utf-8") as stream:
+            stream.write(
+                json.dumps(
+                    {
+                        "type": "session_meta",
+                        "payload": {
+                            "id": INCLUDED_ID,
+                            "session_id": INCLUDED_ID,
+                        },
+                    }
+                )
+                + "\n"
+            )
+
+        info = read_rollout_info(path, self.home)
+
+        self.assertEqual(info.thread_id, SECOND_ID)
+        self.assertEqual(info.session_id, INCLUDED_ID)
+
     def test_discovery_is_recursive_sorted_and_groups_duplicate_included_ids(self) -> None:
         later = write_rollout(
             self.home,
