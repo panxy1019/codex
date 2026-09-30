@@ -56,7 +56,12 @@ class FakeRunner:
             return subprocess.CompletedProcess(command, 0, json.dumps(payload), "")
         if command[:3] == ["gh", "release", "create"]:
             self.release = "draft"
-            return subprocess.CompletedProcess(command, 0, URL + "\n", "")
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                "https://github.com/owner/repo/releases/tag/untagged-draft\n",
+                "",
+            )
         if command[:3] == ["gh", "release", "upload"]:
             if self.fail_operation == "upload":
                 raise subprocess.CalledProcessError(1, command, stderr="upload failed")
@@ -120,7 +125,10 @@ class PublishTests(unittest.TestCase):
 
         self.assertEqual(url, URL)
         operations = [command[2] for command in runner.commands if command[:2] == ["gh", "release"]]
-        self.assertEqual(operations, ["view", "create", "upload", "download", "edit"])
+        self.assertEqual(
+            operations,
+            ["view", "create", "upload", "download", "edit", "view"],
+        )
         downloaded_archives = verify.call_args.args[0]
         self.assertNotEqual(downloaded_archives[0], self.archive)
         self.assertEqual(downloaded_archives[0].name, self.archive.name)

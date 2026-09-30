@@ -270,7 +270,28 @@ def publish_verified_release(config: PublishConfig, runner: CommandRunner) -> st
         ],
         cwd=checkout,
     )
-    return url
+    final = _checked(
+        runner,
+        [
+            "gh",
+            "release",
+            "view",
+            config.tag,
+            "--repo",
+            config.repo,
+            "--json",
+            "url",
+        ],
+        cwd=checkout,
+    )
+    try:
+        final_value = json.loads(final.stdout)
+    except json.JSONDecodeError as exc:
+        raise ReleaseVerificationError("published Release lookup returned invalid JSON") from exc
+    final_url = final_value.get("url") if isinstance(final_value, dict) else None
+    if not isinstance(final_url, str) or not final_url:
+        raise ReleaseVerificationError("published Release lookup returned no URL")
+    return final_url
 
 
 def _parser() -> argparse.ArgumentParser:
